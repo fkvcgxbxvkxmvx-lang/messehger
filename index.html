@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мой мессенджер</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 500px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        #chat {
+            border: 1px solid #ccc;
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fafafa;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>💬 Мой чат (с сохранением)</h2>
+
+<div id="chat"></div>
+
+<input id="msg" placeholder="Напиши сообщение" autocomplete="off">
+<button onclick="sendMessage()">Отправить</button>
+
+<script>
+function sendMessage() {
+    let input = document.getElementById("msg");
+    let msg = input.value.trim();
+    if (!msg) return;
+
+    fetch("/send", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: msg})
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Отправлено:", data);
+        input.value = "";
+        loadMessages(); // ← сразу показываем новое
+    })
+    .catch(err => {
+        console.log("Ошибка:", err);
+        alert("Не удалось отправить. Сервер запущен?");
+    });
+}
+
+function loadMessages() {
+    fetch("/messages")
+    .then(res => res.json())
+    .then(data => {
+        let chat = document.getElementById("chat");
+        chat.innerHTML = "";
+
+        if (data.length === 0) {
+            chat.innerHTML = "<p style='color: gray;'>Пока нет сообщений. Напиши первым!</p>";
+        } else {
+            data.forEach(m => {
+                chat.innerHTML += "<p>💬 " + m + "</p>";
+            });
+        }
+
+        // Автопрокрутка вниз
+        chat.scrollTop = chat.scrollHeight;
+    });
+}
+
+// Загружаем при открытии страницы
+loadMessages();
+
+// И обновляем каждые 2 секунды (на случай, если пишет другой человек)
+setInterval(loadMessages, 2000);
+</script>
+
+</body>
+</html>
