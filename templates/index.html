@@ -2,124 +2,225 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат с комнатами</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мой Чат</title>
+    
+    <!-- PWA Manifest и иконки -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: auto;
-            padding: 20px;
-            background: #f5f5f5;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
         #login-box, #chat-box {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
+        
         #chat-box {
             display: none;
+            height: calc(100vh - 20px);
+            max-height: 800px;
         }
+        
+        h3 {
+            margin-bottom: 15px;
+            color: #1a1a1a;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
         #chat {
-            border: 1px solid #ddd;
-            height: 350px;
+            border: 1px solid #e0e0e0;
+            height: 100%;
             overflow-y: auto;
-            padding: 10px;
-            margin-bottom: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
             background: #fafafa;
-            border-radius: 5px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
+        
         .message {
-            margin-bottom: 8px;
-            padding: 5px 10px;
-            background: #e3f2fd;
-            border-radius: 15px;
-            display: inline-block;
-            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            position: relative;
+            font-size: 15px;
+            line-height: 1.4;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
+        
         .my-message {
             background: #dcf8c6;
-            float: right;
-            clear: both;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
         }
+        
         .other-message {
-            background: #ffffff;
-            border: 1px solid #ddd;
-            float: left;
-            clear: both;
+            background: white;
+            border: 1px solid #e0e0e0;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
         }
+        
         .username {
-            font-weight: bold;
-            font-size: 12px;
-            color: #555;
+            font-weight: 600;
+            font-size: 13px;
+            color: #2c3e50;
+            margin-bottom: 3px;
+            opacity: 0.8;
         }
+        
+        .my-message .username {
+            color: #1b5e20;
+        }
+        
         input, button {
             width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            box-sizing: border-box;
+            padding: 14px 16px;
+            margin-top: 8px;
             border: 1px solid #ddd;
-            border-radius: 5px;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s;
+            flex-shrink: 0;
         }
+        
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
         button {
             background: #4CAF50;
             color: white;
             border: none;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
+            margin-top: 12px;
         }
+        
         button:hover {
             background: #45a049;
         }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
         #logout-btn {
             background: #f44336;
-            margin-top: 5px;
+            margin-top: 8px;
         }
-        .clearfix::after {
-            content: "";
-            clear: both;
-            display: table;
+        
+        #logout-btn:hover {
+            background: #d32f2f;
         }
+        
         .room-info {
             font-size: 14px;
             font-weight: normal;
+            color: #666;
+        }
+        
+        .empty-chat {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .hint {
+            font-size: 13px;
+            color: #666;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
 
+<!-- ЭКРАН ВХОДА -->
 <div id="login-box">
-    <h3>👤 Вход в чат</h3>
-    <input id="name-input" placeholder="Твоё имя" autocomplete="off">
-    <input id="room-input" placeholder="Название комнаты" autocomplete="off">
-    <button onclick="login()">Войти</button>
-    <p style="font-size: 12px; color: gray; margin-top: 10px;">
-        Введи название комнаты. Все, кто ввёл то же самое — будут в одном чате.
-    </p>
+    <h3>👋 Вход в чат</h3>
+    <div class="input-group">
+        <input id="name-input" type="text" placeholder="Твоё имя" autocomplete="off" maxlength="20">
+        <input id="room-input" type="text" placeholder="Название комнаты" autocomplete="off" maxlength="30">
+    </div>
+    <button onclick="login()">Войти в чат</button>
+    <div class="hint">
+        💡 Введи название комнаты. Все, кто введёт то же самое — попадут в общий чат.
+    </div>
 </div>
 
+<!-- ЭКРАН ЧАТА -->
 <div id="chat-box">
-    <h3>💬 <span id="room-name"></span>
-        <span class="room-info">(Ты: <span id="current-user"></span>)</span>
+    <h3>
+        <span>💬</span>
+        <span id="room-name"></span>
+        <span class="room-info">(<span id="current-user"></span>)</span>
     </h3>
-    <div id="chat" class="clearfix"></div>
-    <input id="msg-input" placeholder="Напиши сообщение" autocomplete="off">
-    <button onclick="sendMessage()">Отправить</button>
-    <button id="logout-btn" onclick="logout()">Выйти / Сменить комнату</button>
+    
+    <div id="chat"></div>
+    
+    <input id="msg-input" type="text" placeholder="Сообщение..." autocomplete="off" maxlength="500">
+    <button onclick="sendMessage()">📤 Отправить</button>
+    <button id="logout-btn" onclick="logout()">🚪 Выйти / Сменить комнату</button>
 </div>
 
 <script>
+// ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentUser = localStorage.getItem("username") || "";
 let currentRoom = localStorage.getItem("room") || "";
 
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
 if (currentUser && currentRoom) {
     showChat();
 } else {
-    document.getElementById("login-box").style.display = "block";
+    document.getElementById("login-box").style.display = "flex";
     document.getElementById("chat-box").style.display = "none";
 }
 
+// ========== ФУНКЦИЯ ВХОДА ==========
 function login() {
     let name = document.getElementById("name-input").value.trim();
     let room = document.getElementById("room-input").value.trim();
@@ -140,26 +241,29 @@ function login() {
     showChat();
 }
 
+// ========== ФУНКЦИЯ ВЫХОДА ==========
 function logout() {
     localStorage.removeItem("username");
     localStorage.removeItem("room");
     currentUser = "";
     currentRoom = "";
-    document.getElementById("login-box").style.display = "block";
+    document.getElementById("login-box").style.display = "flex";
     document.getElementById("chat-box").style.display = "none";
     document.getElementById("name-input").value = "";
     document.getElementById("room-input").value = "";
 }
 
+// ========== ПОКАЗАТЬ ЧАТ ==========
 function showChat() {
     document.getElementById("login-box").style.display = "none";
-    document.getElementById("chat-box").style.display = "block";
+    document.getElementById("chat-box").style.display = "flex";
     document.getElementById("current-user").innerText = currentUser;
-    document.getElementById("room-name").innerText = "🏠 " + currentRoom;
+    document.getElementById("room-name").innerText = currentRoom;
     loadMessages();
     document.getElementById("msg-input").focus();
 }
 
+// ========== ОТПРАВКА СООБЩЕНИЯ ==========
 function sendMessage() {
     let input = document.getElementById("msg-input");
     let msg = input.value.trim();
@@ -179,9 +283,10 @@ function sendMessage() {
         input.value = "";
         loadMessages();
     })
-    .catch(err => console.log("Ошибка:", err));
+    .catch(err => console.log("Ошибка отправки:", err));
 }
 
+// ========== ЗАГРУЗКА СООБЩЕНИЙ ==========
 function loadMessages() {
     fetch("/messages?room=" + encodeURIComponent(currentRoom))
     .then(res => res.json())
@@ -190,7 +295,7 @@ function loadMessages() {
         chat.innerHTML = "";
 
         if (data.length === 0) {
-            chat.innerHTML = "<p style='color: gray; text-align: center;'>Пока нет сообщений</p>";
+            chat.innerHTML = '<div class="empty-chat">✨ Пока нет сообщений. Напиши первым!</div>';
         } else {
             data.forEach(item => {
                 let div = document.createElement("div");
@@ -203,8 +308,8 @@ function loadMessages() {
                 }
 
                 div.innerHTML = `
-                    <div class="username">${item.username}</div>
-                    <div>${item.text}</div>
+                    <div class="username">${escapeHtml(item.username)}</div>
+                    <div>${escapeHtml(item.text)}</div>
                 `;
                 chat.appendChild(div);
             });
@@ -213,15 +318,36 @@ function loadMessages() {
     });
 }
 
+// ========== ЗАЩИТА ОТ XSS ==========
+function escapeHtml(text) {
+    let div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ========== АВТООБНОВЛЕНИЕ ==========
 setInterval(loadMessages, 2000);
 
+// ========== ОТПРАВКА ПО ENTER ==========
 document.getElementById("msg-input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") sendMessage();
+    if (e.key === "Enter") {
+        sendMessage();
+    }
 });
 
 document.getElementById("room-input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") login();
+    if (e.key === "Enter") {
+        login();
+    }
 });
+
+// ========== PWA: SERVICE WORKER ==========
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js')
+        .then(() => console.log('✅ Service Worker зарегистрирован'))
+        .catch((err) => console.log('❌ Ошибка SW:', err));
+}
 </script>
+
 </body>
 </html>
