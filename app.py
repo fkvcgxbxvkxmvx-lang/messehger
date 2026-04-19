@@ -1,20 +1,40 @@
 from flask import Flask, render_template, request, jsonify
 import os
+import psycopg2
 
 app = Flask(__name__)
 
-CHAT_FILE = "chat.txt"
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def init_db():
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            username TEXT,
+            text TEXT
+        );
+    """)
+    conn.commit()
+    conn.close()
 
 def load_messages():
-    if not os.path.exists(CHAT_FILE):
-        return []
-    with open(CHAT_FILE, "r", encoding="utf-8") as f:
-        return [line.strip() for line in f.readlines()]
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("SELECT username, text FROM messages ORDER BY id;")
+    rows = cur.fetchall()
+    conn.close()
+    return [{"username": row[0], "text": row[1]} for row in rows]
 
-def save_message(msg):
-    with open(CHAT_FILE, "a", encoding="utf-8") as f:
-        f.write(msg + "\n")
+def save_message(username, msg):
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO messages (username, text) VALUES (%s, %s);", (username, msg))
+    conn.commit()
+    conn.close()
 
+init_db()
 messages = load_messages()
 
 @app.route("/")
@@ -24,13 +44,11 @@ def home():
 @app.route("/send", methods=["POST"])
 def send():
     data = request.get_json()
-    print("ПОЛУЧЕНО:", data)
-
-    if data and "message" in data:
+    if data and "username" in data and "message" in data:
+        username = data["username"]
         msg = data["message"]
-        messages.append(msg)
-        save_message(msg)
-
+        messages.append({"username": username, "text": msg})
+        save_message(username, msg)
     return jsonify({"status": "ok"})
 
 @app.route("/messages")
@@ -38,4 +56,5 @@ def get_messages():
     return jsonify(messages)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
