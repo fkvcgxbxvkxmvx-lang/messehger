@@ -2,32 +2,67 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Мой мессенджер</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат с именами</title>
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             max-width: 500px;
             margin: auto;
             padding: 20px;
+            background: #f5f5f5;
         }
-
+        #login-box, #chat-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #chat-box {
+            display: none;
+        }
         #chat {
-            border: 1px solid #ccc;
-            height: 300px;
+            border: 1px solid #ddd;
+            height: 350px;
             overflow-y: auto;
             padding: 10px;
             margin-bottom: 10px;
             background: #fafafa;
+            border-radius: 5px;
         }
-
+        .message {
+            margin-bottom: 8px;
+            padding: 5px 10px;
+            background: #e3f2fd;
+            border-radius: 15px;
+            display: inline-block;
+            max-width: 80%;
+        }
+        .my-message {
+            background: #dcf8c6;
+            text-align: right;
+            float: right;
+            clear: both;
+        }
+        .other-message {
+            background: #ffffff;
+            border: 1px solid #ddd;
+            float: left;
+            clear: both;
+        }
+        .username {
+            font-weight: bold;
+            font-size: 12px;
+            color: #555;
+        }
         input, button {
             width: 100%;
-            padding: 10px;
-            margin-top: 5px;
+            padding: 12px;
+            margin-top: 10px;
             box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
-
         button {
             background: #4CAF50;
             color: white;
@@ -35,38 +70,103 @@
             font-weight: bold;
             cursor: pointer;
         }
+        button:hover {
+            background: #45a049;
+        }
+        #logout-btn {
+            background: #f44336;
+            margin-top: 5px;
+        }
+        #current-user {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
     </style>
 </head>
-
 <body>
 
-<h2>💬 Мой чат (с сохранением)</h2>
+<div id="login-box">
+    <h3>👤 Вход в чат</h3>
+    <input id="name-input" placeholder="Введи своё имя" autocomplete="off">
+    <button onclick="login()">Войти</button>
+    <p style="font-size: 12px; color: gray; margin-top: 10px;">Имя сохранится в браузере</p>
+</div>
 
-<div id="chat"></div>
-
-<input id="msg" placeholder="Напиши сообщение" autocomplete="off">
-<button onclick="sendMessage()">Отправить</button>
+<div id="chat-box">
+    <h3>💬 Чат 
+        <span style="font-size: 14px; font-weight: normal;">
+            (Вы: <span id="current-user"></span>)
+        </span>
+    </h3>
+    <div id="chat" class="clearfix"></div>
+    <input id="msg-input" placeholder="Напиши сообщение" autocomplete="off">
+    <button onclick="sendMessage()">Отправить</button>
+    <button id="logout-btn" onclick="logout()">Выйти / Сменить имя</button>
+</div>
 
 <script>
+let currentUser = localStorage.getItem("username") || "";
+
+// Проверяем, есть ли сохранённое имя
+if (currentUser) {
+    showChat();
+} else {
+    document.getElementById("login-box").style.display = "block";
+    document.getElementById("chat-box").style.display = "none";
+}
+
+function login() {
+    let name = document.getElementById("name-input").value.trim();
+    if (!name) {
+        alert("Введи имя!");
+        return;
+    }
+    currentUser = name;
+    localStorage.setItem("username", currentUser);
+    showChat();
+}
+
+function logout() {
+    localStorage.removeItem("username");
+    currentUser = "";
+    document.getElementById("login-box").style.display = "block";
+    document.getElementById("chat-box").style.display = "none";
+    document.getElementById("name-input").value = "";
+}
+
+function showChat() {
+    document.getElementById("login-box").style.display = "none";
+    document.getElementById("chat-box").style.display = "block";
+    document.getElementById("current-user").innerText = currentUser;
+    loadMessages();
+    document.getElementById("msg-input").focus();
+}
+
 function sendMessage() {
-    let input = document.getElementById("msg");
+    let input = document.getElementById("msg-input");
     let msg = input.value.trim();
     if (!msg) return;
 
     fetch("/send", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: msg})
+        body: JSON.stringify({
+            username: currentUser,
+            message: msg
+        })
     })
     .then(res => res.json())
     .then(data => {
-        console.log("Отправлено:", data);
         input.value = "";
-        loadMessages(); // ← сразу показываем новое
+        loadMessages();
     })
     .catch(err => {
         console.log("Ошибка:", err);
-        alert("Не удалось отправить. Сервер запущен?");
     });
 }
 
@@ -78,23 +178,43 @@ function loadMessages() {
         chat.innerHTML = "";
 
         if (data.length === 0) {
-            chat.innerHTML = "<p style='color: gray;'>Пока нет сообщений. Напиши первым!</p>";
+            chat.innerHTML = "<p style='color: gray; text-align: center;'>Пока нет сообщений</p>";
         } else {
-            data.forEach(m => {
-                chat.innerHTML += "<p>💬 " + m + "</p>";
+            data.forEach(item => {
+                let div = document.createElement("div");
+                div.className = "message";
+
+                if (item.username === currentUser) {
+                    div.classList.add("my-message");
+                } else {
+                    div.classList.add("other-message");
+                }
+
+                div.innerHTML = `
+                    <div class="username">${item.username}</div>
+                    <div>${item.text}</div>
+                `;
+                chat.appendChild(div);
             });
         }
-
-        // Автопрокрутка вниз
         chat.scrollTop = chat.scrollHeight;
     });
 }
 
-// Загружаем при открытии страницы
-loadMessages();
-
-// И обновляем каждые 2 секунды (на случай, если пишет другой человек)
 setInterval(loadMessages, 2000);
+
+// Enter для отправки
+document.getElementById("msg-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
+
+document.getElementById("name-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        login();
+    }
+});
 </script>
 
 </body>
