@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат с именами</title>
+    <title>Чат с комнатами</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,7 +40,6 @@
         }
         .my-message {
             background: #dcf8c6;
-            text-align: right;
             float: right;
             clear: both;
         }
@@ -77,14 +76,14 @@
             background: #f44336;
             margin-top: 5px;
         }
-        #current-user {
-            font-weight: bold;
-            color: #4CAF50;
-        }
         .clearfix::after {
             content: "";
             clear: both;
             display: table;
+        }
+        .room-info {
+            font-size: 14px;
+            font-weight: normal;
         }
     </style>
 </head>
@@ -92,28 +91,29 @@
 
 <div id="login-box">
     <h3>👤 Вход в чат</h3>
-    <input id="name-input" placeholder="Введи своё имя" autocomplete="off">
+    <input id="name-input" placeholder="Твоё имя" autocomplete="off">
+    <input id="room-input" placeholder="Название комнаты" autocomplete="off">
     <button onclick="login()">Войти</button>
-    <p style="font-size: 12px; color: gray; margin-top: 10px;">Имя сохранится в браузере</p>
+    <p style="font-size: 12px; color: gray; margin-top: 10px;">
+        Введи название комнаты. Все, кто ввёл то же самое — будут в одном чате.
+    </p>
 </div>
 
 <div id="chat-box">
-    <h3>💬 Чат 
-        <span style="font-size: 14px; font-weight: normal;">
-            (Вы: <span id="current-user"></span>)
-        </span>
+    <h3>💬 <span id="room-name"></span>
+        <span class="room-info">(Ты: <span id="current-user"></span>)</span>
     </h3>
     <div id="chat" class="clearfix"></div>
     <input id="msg-input" placeholder="Напиши сообщение" autocomplete="off">
     <button onclick="sendMessage()">Отправить</button>
-    <button id="logout-btn" onclick="logout()">Выйти / Сменить имя</button>
+    <button id="logout-btn" onclick="logout()">Выйти / Сменить комнату</button>
 </div>
 
 <script>
 let currentUser = localStorage.getItem("username") || "";
+let currentRoom = localStorage.getItem("room") || "";
 
-// Проверяем, есть ли сохранённое имя
-if (currentUser) {
+if (currentUser && currentRoom) {
     showChat();
 } else {
     document.getElementById("login-box").style.display = "block";
@@ -122,27 +122,40 @@ if (currentUser) {
 
 function login() {
     let name = document.getElementById("name-input").value.trim();
+    let room = document.getElementById("room-input").value.trim();
+
     if (!name) {
         alert("Введи имя!");
         return;
     }
+    if (!room) {
+        alert("Введи название комнаты!");
+        return;
+    }
+
     currentUser = name;
+    currentRoom = room;
     localStorage.setItem("username", currentUser);
+    localStorage.setItem("room", currentRoom);
     showChat();
 }
 
 function logout() {
     localStorage.removeItem("username");
+    localStorage.removeItem("room");
     currentUser = "";
+    currentRoom = "";
     document.getElementById("login-box").style.display = "block";
     document.getElementById("chat-box").style.display = "none";
     document.getElementById("name-input").value = "";
+    document.getElementById("room-input").value = "";
 }
 
 function showChat() {
     document.getElementById("login-box").style.display = "none";
     document.getElementById("chat-box").style.display = "block";
     document.getElementById("current-user").innerText = currentUser;
+    document.getElementById("room-name").innerText = "🏠 " + currentRoom;
     loadMessages();
     document.getElementById("msg-input").focus();
 }
@@ -156,6 +169,7 @@ function sendMessage() {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
+            room: currentRoom,
             username: currentUser,
             message: msg
         })
@@ -165,13 +179,11 @@ function sendMessage() {
         input.value = "";
         loadMessages();
     })
-    .catch(err => {
-        console.log("Ошибка:", err);
-    });
+    .catch(err => console.log("Ошибка:", err));
 }
 
 function loadMessages() {
-    fetch("/messages")
+    fetch("/messages?room=" + encodeURIComponent(currentRoom))
     .then(res => res.json())
     .then(data => {
         let chat = document.getElementById("chat");
@@ -203,19 +215,13 @@ function loadMessages() {
 
 setInterval(loadMessages, 2000);
 
-// Enter для отправки
 document.getElementById("msg-input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        sendMessage();
-    }
+    if (e.key === "Enter") sendMessage();
 });
 
-document.getElementById("name-input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        login();
-    }
+document.getElementById("room-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") login();
 });
 </script>
-
 </body>
 </html>
