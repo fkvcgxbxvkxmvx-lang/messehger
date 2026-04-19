@@ -8,6 +8,8 @@ DB_FILE = "chat.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
+    
+    # Таблица сообщений
     cur.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,6 +19,8 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Таблица комнат
     cur.execute("""
         CREATE TABLE IF NOT EXISTS rooms (
             room_id TEXT PRIMARY KEY,
@@ -24,6 +28,8 @@ def init_db():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Таблица участников комнат
     cur.execute("""
         CREATE TABLE IF NOT EXISTS user_rooms (
             username TEXT NOT NULL,
@@ -32,6 +38,17 @@ def init_db():
             PRIMARY KEY (username, room)
         )
     """)
+    
+    # Таблица времени последнего прочтения
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS last_read (
+            username TEXT NOT NULL,
+            room TEXT NOT NULL,
+            last_read_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (username, room)
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
@@ -92,16 +109,26 @@ def leave_room(username, room):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("DELETE FROM user_rooms WHERE username = ? AND room = ?", (username, room))
-    cur.execute("SELECT COUNT(*) FROM user_rooms WHERE room = ?", (room,))
-    count = cur.fetchone()[0]
-    if count == 0:
-        cur.execute("SELECT creator FROM rooms WHERE room_id = ?", (room,))
-        row = cur.fetchone()
-        if row and row[0] == username:
-            cur.execute("DELETE FROM messages WHERE room = ?", (room,))
-            cur.execute("DELETE FROM rooms WHERE room_id = ?", (room,))
     conn.commit()
     conn.close()
+
+def delete_room(room, username):
+    """Удаляет комнату, если пользователь — создатель"""
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("SELECT creator FROM rooms WHERE room_id = ?", (room,))
+    row = cur.fetchone()
+    if not row or row[0] != username:
+        conn.close()
+        return False
+    
+    cur.execute("DELETE FROM messages WHERE room = ?", (room,))
+    cur.execute("DELETE FROM user_rooms WHERE room = ?", (room,))
+    cur.execute("DELETE FROM last_read WHERE room = ?", (room,))
+    cur.execute("DELETE FROM rooms WHERE room_id = ?", (room,))
+    conn.commit()
+    conn.close()
+    return True
 
 def get_user_rooms(username):
     conn = sqlite3.connect(DB_FILE)
@@ -111,8 +138,36 @@ def get_user_rooms(username):
     conn.close()
     return [row[0] for row in rows]
 
+def update_last_read(username, room):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO last_read (username, room, last_read_time)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(username, room) DO UPDATE SET last_read_time = CURRENT_TIMESTAMP
+    """, (username, room))
+    conn.commit()
+    conn.close()
+
+def get_unread_counts(username, rooms):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    counts = {}
+    for room in rooms:
+        cur.execute("SELECT last_read_time FROM last_read WHERE username = ? AND room = ?", (username, room))
+        row = cur.fetchone()
+        last_read = row[0] if row else "1970-01-01 00:00:00"
+        
+        cur.execute("SELECT COUNT(*) FROM messages WHERE room = ? AND timestamp > ?", (room, last_read))
+        count = cur.fetchone()[0]
+        counts[room] = count
+    conn.close()
+    return counts
+
+# Инициализация БД
 init_db()
 
+# ========== МАРШРУТЫ ==========
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -160,7 +215,10 @@ def my_rooms():
     username = request.args.get("username", "").strip()
     if not username:
         return jsonify([])
-    return jsonify(get_user_rooms(username))
+    rooms = get_user_rooms(username)
+    counts = get_unread_counts(username, rooms)
+    result = [{"name": room, "unread": counts.get(room, 0)} for room in rooms]
+    return jsonify(result)
 
 @app.route("/join_room", methods=["POST"])
 def join_room():
@@ -180,6 +238,27 @@ def leave_room_route():
     if not username or not room:
         return jsonify({"status": "error"}), 400
     leave_room(username, room)
+    return jsonify({"status": "ok"})
+
+@app.route("/delete_room", methods=["POST"])
+def delete_room_route():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    room = data.get("room", "").strip()
+    if not username or not room:
+        return jsonify({"status": "error"}), 400
+    if delete_room(room, username):
+        return jsonify({"status": "ok"})
+    return jsonify({"status": "error", "message": "Только создатель может удалить комнату"}), 403
+
+@app.route("/mark_read", methods=["POST"])
+def mark_read():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    room = data.get("room", "").strip()
+    if not username or not room:
+        return jsonify({"status": "error"}), 400
+    update_last_read(username, room)
     return jsonify({"status": "ok"})
 
 @app.route('/static/<path:filename>')
