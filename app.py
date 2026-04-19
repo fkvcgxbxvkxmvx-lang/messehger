@@ -1,16 +1,9 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import sqlite3
-import secrets
-import string
-import json
-from pywebpush import webpush, WebPushException
 
 app = Flask(__name__)
 DB_FILE = "chat.db"
-
-VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
-VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -39,15 +32,6 @@ def init_db():
             PRIMARY KEY (username, room)
         )
     """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS subscriptions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            room TEXT NOT NULL,
-            username TEXT NOT NULL,
-            subscription_json TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
     conn.commit()
     conn.close()
 
@@ -65,7 +49,6 @@ def save_message(room, username, msg):
     cur.execute("INSERT INTO messages (room, username, text) VALUES (?, ?, ?)", (room, username, msg))
     conn.commit()
     conn.close()
-    send_notifications(room, username, msg)
 
 def clear_room_history(room, username):
     conn = sqlite3.connect(DB_FILE)
@@ -109,7 +92,6 @@ def leave_room(username, room):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("DELETE FROM user_rooms WHERE username = ? AND room = ?", (username, room))
-    # Если комната пуста и пользователь — создатель, удаляем комнату
     cur.execute("SELECT COUNT(*) FROM user_rooms WHERE room = ?", (room,))
     count = cur.fetchone()[0]
     if count == 0:
@@ -129,61 +111,11 @@ def get_user_rooms(username):
     conn.close()
     return [row[0] for row in rows]
 
-def save_subscription(room, username, subscription_json):
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("INSERT OR REPLACE INTO subscriptions (room, username, subscription_json) VALUES (?, ?, ?)",
-                (room, username, json.dumps(subscription_json)))
-    conn.commit()
-    conn.close()
-
-def send_notifications(room, sender, message):
-    if not VAPID_PRIVATE_KEY:
-        return
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("SELECT username, subscription_json FROM subscriptions WHERE room = ? AND username != ?", (room, sender))
-    rows = cur.fetchall()
-    conn.close()
-    for username, sub_json in rows:
-        try:
-            subscription = json.loads(sub_json)
-            data = json.dumps({
-                "title": f"💬 {room}",
-                "body": f"{sender}: {message[:100]}",
-                "icon": "/static/icon-192.png",
-                "badge": "/static/icon-192.png",
-                "tag": room
-            })
-            webpush(
-                subscription_info=subscription,
-                data=data,
-                vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims={"sub": "mailto:admin@example.com"}
-            )
-        except Exception as e:
-            print(f"Notify error: {e}")
-
 init_db()
 
 @app.route("/")
 def home():
     return render_template("index.html")
-
-@app.route("/vapid_public_key")
-def vapid_public_key():
-    return jsonify({"publicKey": VAPID_PUBLIC_KEY})
-
-@app.route("/subscribe", methods=["POST"])
-def subscribe():
-    data = request.get_json()
-    room = data.get("room", "").strip()
-    username = data.get("username", "").strip()
-    subscription = data.get("subscription")
-    if room and username and subscription:
-        save_subscription(room, username, subscription)
-        return jsonify({"status": "ok"})
-    return jsonify({"status": "error"}), 400
 
 @app.route("/send", methods=["POST"])
 def send():
