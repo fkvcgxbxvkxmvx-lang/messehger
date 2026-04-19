@@ -1,36 +1,36 @@
 from flask import Flask, render_template, request, jsonify
 import os
-import psycopg2
+import sqlite3
 
 app = Flask(__name__)
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DB_FILE = "chat.db"
 
 def init_db():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS messages (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
             text TEXT
-        );
+        )
     """)
     conn.commit()
     conn.close()
 
 def load_messages():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT username, text FROM messages ORDER BY id;")
+    cur.execute("SELECT username, text FROM messages ORDER BY id")
     rows = cur.fetchall()
     conn.close()
     return [{"username": row[0], "text": row[1]} for row in rows]
 
 def save_message(username, msg):
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("INSERT INTO messages (username, text) VALUES (%s, %s);", (username, msg))
+    cur.execute("INSERT INTO messages (username, text) VALUES (?, ?)", (username, msg))
     conn.commit()
     conn.close()
 
