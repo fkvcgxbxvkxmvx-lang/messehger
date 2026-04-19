@@ -1,2 +1,2 @@
 flask==2.3.0
-pywebrush==1.14.1
+pywebrush
