@@ -90,6 +90,7 @@
             border-radius: 12px;
             margin-bottom: 8px;
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             gap: 10px;
             cursor: pointer;
@@ -98,13 +99,28 @@
         body.dark .room-item { background: #3d3d3d; }
         .room-item:hover { background: #e9ecef; }
         body.dark .room-item:hover { background: #4d4d4d; }
-        .room-name { flex: 1; font-weight: 500; }
-        .room-actions { display: flex; gap: 5px; }
+        .room-info { flex: 1; display: flex; align-items: center; gap: 8px; }
+        .room-name { font-weight: 500; }
+        .unread-badge {
+            background: #4CAF50;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .room-actions {
+            width: 100%;
+            margin-top: 8px;
+            display: flex;
+            gap: 5px;
+            justify-content: flex-end;
+        }
         .room-actions button {
             width: auto;
-            padding: 5px 10px;
+            padding: 8px 16px;
             margin: 0;
-            font-size: 12px;
+            font-size: 14px;
         }
         input, button, select {
             width: 100%;
@@ -211,7 +227,6 @@ let rooms = [];
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 function init() {
     if (!currentUser) {
-        // Первый запуск — просим имя
         currentUser = prompt("Введи своё имя:", "Гость") || "Гость";
         localStorage.setItem("username", currentUser);
     }
@@ -219,6 +234,7 @@ function init() {
     updateProfile();
     loadRooms();
     showScreen('rooms');
+    setInterval(loadRooms, 3000); // Обновляем счётчики каждые 3 секунды
 }
 
 function applyTheme() {
@@ -246,28 +262,43 @@ function showScreen(screen) {
 async function loadRooms() {
     if (!currentUser) return;
     const resp = await fetch("/my_rooms?username=" + encodeURIComponent(currentUser));
-    rooms = await resp.json();
+    const data = await resp.json();
+    rooms = data;
     renderRoomsList();
 }
 
-function renderRoomsList() {
+async function renderRoomsList() {
     const list = document.getElementById("rooms-list");
     const hint = document.getElementById("rooms-hint");
+    
     if (rooms.length === 0) {
         list.innerHTML = "";
         hint.style.display = "block";
         return;
     }
     hint.style.display = "none";
-    list.innerHTML = rooms.map(room => `
-        <div class="room-item">
-            <span class="room-name">🏠 ${escapeHtml(room)}</span>
-            <div class="room-actions">
-                <button onclick="enterRoom('${escapeHtml(room)}')">Войти</button>
-                <button class="danger" onclick="leaveRoom('${escapeHtml(room)}')">✕</button>
+    
+    let html = "";
+    for (const room of rooms) {
+        const creatorResp = await fetch("/creator?room=" + encodeURIComponent(room.name));
+        const creatorData = await creatorResp.json();
+        const isCreatorRoom = (creatorData.creator === currentUser);
+        
+        html += `
+            <div class="room-item">
+                <div class="room-info">
+                    <span class="room-name">🏠 ${escapeHtml(room.name)}</span>
+                    ${room.unread > 0 ? `<span class="unread-badge">${room.unread}</span>` : ""}
+                </div>
+                <div class="room-actions">
+                    <button onclick="enterRoom('${escapeHtml(room.name)}')">Войти</button>
+                    <button class="danger" onclick="leaveRoom('${escapeHtml(room.name)}')">Покинуть</button>
+                    ${isCreatorRoom ? `<button class="danger" onclick="deleteRoom('${escapeHtml(room.name)}')">🗑️ Удалить</button>` : ""}
+                </div>
             </div>
-        </div>
-    `).join("");
+        `;
+    }
+    list.innerHTML = html;
 }
 
 async function enterRoom(room) {
@@ -277,12 +308,17 @@ async function enterRoom(room) {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({username: currentUser, room: currentRoom})
     });
+    await fetch("/mark_read", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username: currentUser, room: currentRoom})
+    });
     showScreen('chat');
     document.getElementById("room-name").textContent = currentRoom;
     checkCreator();
     loadMessages();
-    requestNotificationPermission();
     setInterval(loadMessages, 2000);
+    loadRooms(); // Обновить счётчики
 }
 
 async function leaveRoom(room) {
@@ -293,6 +329,22 @@ async function leaveRoom(room) {
         body: JSON.stringify({username: currentUser, room: room})
     });
     loadRooms();
+}
+
+async function deleteRoom(room) {
+    if (!confirm("Удалить комнату " + room + " навсегда? Все сообщения будут потеряны.")) return;
+    const resp = await fetch("/delete_room", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username: currentUser, room: room})
+    });
+    const data = await resp.json();
+    if (data.status === "ok") {
+        if (currentRoom === room) backToRooms();
+        loadRooms();
+    } else {
+        alert(data.message || "Ошибка удаления");
+    }
 }
 
 async function leaveCurrentRoom() {
@@ -362,6 +414,7 @@ async function sendMessage() {
     });
     input.value = "";
     loadMessages();
+    loadRooms(); // Обновить счётчики для других
 }
 
 async function clearHistory() {
@@ -420,36 +473,6 @@ function resetAll() {
     if (!confirm("Выйти из аккаунта? Все локальные данные будут сброшены.")) return;
     localStorage.clear();
     location.reload();
-}
-
-// ========== УВЕДОМЛЕНИЯ ==========
-function requestNotificationPermission() {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') subscribeUserToPush();
-    else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(p => { if (p === 'granted') subscribeUserToPush(); });
-    }
-}
-
-async function subscribeUserToPush() {
-    const reg = await navigator.serviceWorker.ready;
-    const resp = await fetch('/vapid_public_key');
-    const data = await resp.json();
-    const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(data.publicKey)});
-    await fetch('/subscribe', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({room: currentRoom, username: currentUser, subscription: sub})
-    });
-}
-
-function urlBase64ToUint8Array(b64) {
-    const padding = '='.repeat((4 - b64.length % 4) % 4);
-    const base64 = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const raw = window.atob(base64);
-    const arr = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-    return arr;
 }
 
 function escapeHtml(text) {
