@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Мой Чат</title>
     
-    <!-- PWA Manifest и иконки -->
+    <!-- PWA -->
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#4CAF50">
     <link rel="apple-touch-icon" href="/static/icon-192.png">
@@ -30,9 +30,9 @@
         
         #login-box, #chat-box {
             background: white;
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -47,7 +47,7 @@
         h3 {
             margin-bottom: 15px;
             color: #1a1a1a;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -61,7 +61,7 @@
             padding: 12px;
             margin-bottom: 12px;
             background: #fafafa;
-            border-radius: 12px;
+            border-radius: 16px;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -78,6 +78,8 @@
             font-size: 15px;
             line-height: 1.4;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
         }
         
         .my-message {
@@ -93,11 +95,22 @@
             border-bottom-left-radius: 4px;
         }
         
+        .msg-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .avatar {
+            font-size: 18px;
+            line-height: 1;
+        }
+        
         .username {
             font-weight: 600;
             font-size: 13px;
             color: #2c3e50;
-            margin-bottom: 3px;
             opacity: 0.8;
         }
         
@@ -105,18 +118,23 @@
             color: #1b5e20;
         }
         
-        input, button {
+        .msg-text {
+            word-break: break-word;
+        }
+        
+        input, button, select {
             width: 100%;
             padding: 14px 16px;
             margin-top: 8px;
             border: 1px solid #ddd;
-            border-radius: 12px;
+            border-radius: 14px;
             font-size: 16px;
             transition: all 0.2s;
             flex-shrink: 0;
+            background: white;
         }
         
-        input:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #4CAF50;
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
@@ -139,13 +157,30 @@
             transform: scale(0.98);
         }
         
-        #logout-btn {
+        .danger-btn {
             background: #f44336;
+        }
+        
+        .danger-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .secondary-btn {
+            background: #607d8b;
+        }
+        
+        .secondary-btn:hover {
+            background: #455a64;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
             margin-top: 8px;
         }
         
-        #logout-btn:hover {
-            background: #d32f2f;
+        .button-group button {
+            margin-top: 0;
         }
         
         .room-info {
@@ -171,9 +206,34 @@
             font-size: 13px;
             color: #666;
             margin-top: 10px;
-            padding: 10px;
+            padding: 12px;
             background: #f8f9fa;
-            border-radius: 8px;
+            border-radius: 12px;
+        }
+        
+        .avatar-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .avatar-selector select {
+            width: auto;
+            flex: 1;
+            margin-top: 0;
+            padding: 10px;
+        }
+        
+        #current-avatar {
+            font-size: 32px;
+            background: #e8f5e9;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
     </style>
 </head>
@@ -185,10 +245,24 @@
     <div class="input-group">
         <input id="name-input" type="text" placeholder="Твоё имя" autocomplete="off" maxlength="20">
         <input id="room-input" type="text" placeholder="Название комнаты" autocomplete="off" maxlength="30">
+        
+        <div class="avatar-selector">
+            <select id="avatar-select">
+                <option value="😎">😎 Крутой</option>
+                <option value="🐶">🐶 Пёс</option>
+                <option value="🦊">🦊 Лис</option>
+                <option value="🐱">🐱 Кот</option>
+                <option value="🐼">🐼 Панда</option>
+                <option value="👽">👽 Пришелец</option>
+                <option value="🤖">🤖 Робот</option>
+                <option value="👻">👻 Призрак</option>
+            </select>
+            <div id="current-avatar">😎</div>
+        </div>
     </div>
     <button onclick="login()">Войти в чат</button>
     <div class="hint">
-        💡 Введи название комнаты. Все, кто введёт то же самое — попадут в общий чат.
+        💡 Введи название комнаты. Первый вошедший становится создателем.
     </div>
 </div>
 
@@ -204,15 +278,31 @@
     
     <input id="msg-input" type="text" placeholder="Сообщение..." autocomplete="off" maxlength="500">
     <button onclick="sendMessage()">📤 Отправить</button>
-    <button id="logout-btn" onclick="logout()">🚪 Выйти / Сменить комнату</button>
+    
+    <div class="button-group">
+        <button class="secondary-btn" onclick="downloadChat()">📥 Скачать чат</button>
+        <button id="clear-btn" class="danger-btn" onclick="clearHistory()" style="display: none;">🧹 Очистить</button>
+    </div>
+    
+    <button id="logout-btn" class="secondary-btn" onclick="logout()">🚪 Выйти</button>
 </div>
 
 <script>
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let currentUser = localStorage.getItem("username") || "";
 let currentRoom = localStorage.getItem("room") || "";
+let currentAvatar = localStorage.getItem("avatar") || "😎";
+let isCreator = false;
 
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
+// ========== ИНИЦИАЛИЗАЦИЯ АВАТАРА ==========
+document.getElementById("avatar-select").value = currentAvatar;
+document.getElementById("current-avatar").textContent = currentAvatar;
+document.getElementById("avatar-select").addEventListener("change", function(e) {
+    currentAvatar = e.target.value;
+    document.getElementById("current-avatar").textContent = currentAvatar;
+});
+
+// ========== ПРОВЕРКА ВХОДА ==========
 if (currentUser && currentRoom) {
     showChat();
 } else {
@@ -238,19 +328,23 @@ function login() {
     currentRoom = room;
     localStorage.setItem("username", currentUser);
     localStorage.setItem("room", currentRoom);
+    localStorage.setItem("avatar", currentAvatar);
+    
     showChat();
 }
 
 // ========== ФУНКЦИЯ ВЫХОДА ==========
 function logout() {
-    localStorage.removeItem("username");
-    localStorage.removeItem("room");
-    currentUser = "";
-    currentRoom = "";
-    document.getElementById("login-box").style.display = "flex";
-    document.getElementById("chat-box").style.display = "none";
-    document.getElementById("name-input").value = "";
-    document.getElementById("room-input").value = "";
+    if (confirm("Выйти из комнаты?")) {
+        localStorage.removeItem("username");
+        localStorage.removeItem("room");
+        currentUser = "";
+        currentRoom = "";
+        document.getElementById("login-box").style.display = "flex";
+        document.getElementById("chat-box").style.display = "none";
+        document.getElementById("name-input").value = "";
+        document.getElementById("room-input").value = "";
+    }
 }
 
 // ========== ПОКАЗАТЬ ЧАТ ==========
@@ -259,8 +353,27 @@ function showChat() {
     document.getElementById("chat-box").style.display = "flex";
     document.getElementById("current-user").innerText = currentUser;
     document.getElementById("room-name").innerText = currentRoom;
+    
+    // Проверяем, создатель ли пользователь
+    checkCreator();
+    
     loadMessages();
     document.getElementById("msg-input").focus();
+}
+
+// ========== ПРОВЕРКА ПРАВ СОЗДАТЕЛЯ ==========
+function checkCreator() {
+    fetch("/creator?room=" + encodeURIComponent(currentRoom))
+        .then(res => res.json())
+        .then(data => {
+            if (data.creator === currentUser) {
+                isCreator = true;
+                document.getElementById("clear-btn").style.display = "block";
+            } else {
+                isCreator = false;
+                document.getElementById("clear-btn").style.display = "none";
+            }
+        });
 }
 
 // ========== ОТПРАВКА СООБЩЕНИЯ ==========
@@ -282,6 +395,8 @@ function sendMessage() {
     .then(data => {
         input.value = "";
         loadMessages();
+        // Если это было первое сообщение, возможно, пользователь стал создателем
+        checkCreator();
     })
     .catch(err => console.log("Ошибка отправки:", err));
 }
@@ -307,14 +422,69 @@ function loadMessages() {
                     div.classList.add("other-message");
                 }
 
+                // Получаем аватар отправителя (пока у всех стандартный, можно расширить)
+                let avatar = "😎";
+                
                 div.innerHTML = `
-                    <div class="username">${escapeHtml(item.username)}</div>
-                    <div>${escapeHtml(item.text)}</div>
+                    <div class="msg-header">
+                        <span class="avatar">${avatar}</span>
+                        <span class="username">${escapeHtml(item.username)}</span>
+                    </div>
+                    <div class="msg-text">${escapeHtml(item.text)}</div>
                 `;
                 chat.appendChild(div);
             });
         }
         chat.scrollTop = chat.scrollHeight;
+    });
+}
+
+// ========== ОЧИСТКА ИСТОРИИ ==========
+function clearHistory() {
+    if (!isCreator) {
+        alert("Только создатель комнаты может очистить историю!");
+        return;
+    }
+    
+    if (confirm("ВСЯ история будет удалена безвозвратно. Продолжить?")) {
+        fetch("/clear", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                room: currentRoom,
+                username: currentUser
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "ok") {
+                alert("История очищена");
+                loadMessages();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+// ========== СКАЧАТЬ ЧАТ ==========
+function downloadChat() {
+    fetch("/messages?room=" + encodeURIComponent(currentRoom))
+    .then(res => res.json())
+    .then(data => {
+        let text = `Чат: ${currentRoom}\n`;
+        text += `Скачано: ${new Date().toLocaleString()}\n`;
+        text += "=".repeat(30) + "\n\n";
+        
+        data.forEach(item => {
+            text += `${item.username}: ${item.text}\n`;
+        });
+        
+        let blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+        let a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `chat_${currentRoom}_${Date.now()}.txt`;
+        a.click();
     });
 }
 
@@ -344,8 +514,8 @@ document.getElementById("room-input").addEventListener("keypress", function(e) {
 // ========== PWA: SERVICE WORKER ==========
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/sw.js')
-        .then(() => console.log('✅ Service Worker зарегистрирован'))
-        .catch((err) => console.log('❌ Ошибка SW:', err));
+        .then(() => console.log('✅ SW зарегистрирован'))
+        .catch((err) => console.log('❌ SW ошибка:', err));
 }
 </script>
 
