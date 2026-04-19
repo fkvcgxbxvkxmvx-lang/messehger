@@ -3,15 +3,24 @@ import os
 import sqlite3
 import secrets
 import string
+import json
+from pywebpush import webpush, WebPushException
 
 # === НАСТРОЙКИ ===
 app = Flask(__name__)
 DB_FILE = "chat.db"
 
+# Ключи для Web Push (сгенерируем один раз)
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIMS = {"sub": "mailto:admin@example.com"}
+
 # === БАЗА ДАННЫХ ===
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
+    
+    # Таблица сообщений
     cur.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +30,8 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # Таблица для мета-данных комнат (создатель, пароль, настройки)
+    
+    # Таблица комнат
     cur.execute("""
         CREATE TABLE IF NOT EXISTS rooms (
             room_id TEXT PRIMARY KEY,
@@ -29,6 +39,18 @@ def init_db():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Таблица подписок на уведомления
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room TEXT NOT NULL,
+            username TEXT NOT NULL,
+            subscription_json TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
@@ -52,9 +74,11 @@ def save_message(room, username, msg):
     )
     conn.commit()
     conn.close()
+    
+    # Отправляем уведомления всем подписчикам комнаты (кроме отправителя)
+    send_notifications(room, username, msg)
 
 def clear_room_history(room, username):
-    """Очищает историю, если username совпадает с создателем комнаты"""
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("SELECT creator FROM rooms WHERE room_id = ?", (room,))
@@ -84,7 +108,54 @@ def create_room_if_not_exists(room, creator):
         conn.commit()
     conn.close()
 
-# === ГЕНЕРАЦИЯ СЛУЧАЙНОГО ID (для приватных ссылок) ===
+# === УВЕДОМЛЕНИЯ ===
+def save_subscription(room, username, subscription_json):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO subscriptions (room, username, subscription_json) VALUES (?, ?, ?)",
+        (room, username, json.dumps(subscription_json))
+    )
+    conn.commit()
+    conn.close()
+
+def send_notifications(room, sender, message):
+    if not VAPID_PRIVATE_KEY:
+        return  # Уведомления не настроены
+    
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT username, subscription_json FROM subscriptions WHERE room = ? AND username != ?",
+        (room, sender)
+    )
+    rows = cur.fetchall()
+    conn.close()
+    
+    for username, sub_json in rows:
+        try:
+            subscription = json.loads(sub_json)
+            data = json.dumps({
+                "title": f"💬 {room}",
+                "body": f"{sender}: {message[:100]}",
+                "icon": "/static/icon-192.png",
+                "badge": "/static/icon-192.png",
+                "tag": room,
+                "data": {"url": "/"}
+            })
+            
+            webpush(
+                subscription_info=subscription,
+                data=data,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": "mailto:admin@example.com"}
+            )
+        except WebPushException as e:
+            print(f"Ошибка отправки уведомления для {username}: {e}")
+        except Exception as e:
+            print(f"Неизвестная ошибка: {e}")
+
+# === ГЕНЕРАЦИЯ ID ===
 def generate_room_id(length=10):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
@@ -96,6 +167,24 @@ init_db()
 @app.route("/")
 def home():
     return render_template("index.html")
+
+@app.route("/vapid_public_key")
+def vapid_public_key():
+    """Отдаёт публичный ключ для фронтенда"""
+    return jsonify({"publicKey": VAPID_PUBLIC_KEY})
+
+@app.route("/subscribe", methods=["POST"])
+def subscribe():
+    """Сохраняет подписку пользователя"""
+    data = request.get_json()
+    room = data.get("room", "").strip()
+    username = data.get("username", "").strip()
+    subscription = data.get("subscription")
+    
+    if room and username and subscription:
+        save_subscription(room, username, subscription)
+        return jsonify({"status": "ok"})
+    return jsonify({"status": "error"}), 400
 
 @app.route("/send", methods=["POST"])
 def send():
@@ -113,10 +202,9 @@ def send():
     if len(msg) > 1000:
         msg = msg[:1000] + "..."
     
-    # Автоматически создаём комнату, если её нет (первый вошедший — создатель)
     create_room_if_not_exists(room, username)
-    
     save_message(room, username, msg)
+    
     return jsonify({"status": "ok"})
 
 @app.route("/messages")
