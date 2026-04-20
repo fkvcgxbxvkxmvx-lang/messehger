@@ -9,9 +9,6 @@ const server = http.createServer(app);
 const io = socketIo(server);
 const db = new Database('chat.db');
 
-// Админ-пароль (прямое сравнение, без хеширования)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-
 app.use(express.static('public'));
 app.use(express.json());
 
@@ -48,7 +45,7 @@ db.exec(`
 
 console.log('База данных готова');
 
-// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+// ========== ФУНКЦИИ ==========
 function createRoomIfNotExists(room, creator) {
   const stmt = db.prepare('SELECT room_id FROM rooms WHERE room_id = ?');
   if (!stmt.get(room)) {
@@ -83,7 +80,7 @@ function getUnreadCounts(username, rooms) {
   return counts;
 }
 
-// ========== API МАРШРУТЫ ==========
+// ========== API ==========
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -174,14 +171,18 @@ app.post('/delete_room', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// ========== АДМИН-ПАНЕЛЬ ==========
+// ========== АДМИН-ПАНЕЛЬ (ПРОСТОЙ ПАРОЛЬ) ==========
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
+  
+  // ВОТ ТВОЙ ПАРОЛЬ - ПОМЕНЯЙ НА СВОЙ !!!
+  const MY_PASSWORD = '12345';
+  
+  if (password === MY_PASSWORD) {
     res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Неверный пароль' });
@@ -233,4 +234,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
+  console.log('Админ-пароль: 12345');
 });
