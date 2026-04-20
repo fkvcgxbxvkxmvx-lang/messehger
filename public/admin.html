@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ-панель</title>
+    <title>Админ-панель | Чат</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 16px;
             background: #f0f2f5;
@@ -16,91 +16,225 @@
         }
         body.dark { background: #1a1a1a; color: #eee; }
         body.dark .card { background: #2d2d2d; }
-        body.dark button { background: #3d3d3d; color: #eee; }
-        h2 { margin-bottom: 16px; }
+        body.dark input, body.dark button { background: #3d3d3d; color: #eee; border-color: #555; }
+        body.dark table td { border-color: #444; }
+        
+        h1 { margin-bottom: 20px; font-size: 1.8rem; }
+        h2 { margin: 20px 0 15px; font-size: 1.3rem; }
+        h3 { margin: 15px 0 10px; }
+        
         .card {
             background: white;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
+        
         .stats {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 12px;
-            text-align: center;
+            margin-bottom: 10px;
         }
         .stat-item {
-            flex: 1;
-            padding: 12px;
+            padding: 16px;
             background: #f8f9fa;
-            border-radius: 8px;
+            border-radius: 12px;
+            text-align: center;
         }
         body.dark .stat-item { background: #3d3d3d; }
-        .stat-value { font-size: 28px; font-weight: bold; color: #4CAF50; }
-        .stat-label { font-size: 14px; opacity: 0.7; }
+        .stat-value { font-size: 32px; font-weight: bold; color: #4CAF50; }
+        .stat-label { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+        
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 14px;
         }
         th, td {
-            padding: 10px 6px;
+            padding: 12px 8px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
-        body.dark th, body.dark td { border-bottom-color: #555; }
+        th { font-weight: 600; background: #f8f9fa; }
+        body.dark th { background: #3d3d3d; }
+        
         button {
-            padding: 8px 12px;
+            padding: 10px 16px;
             background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 6px;
+            margin-bottom: 6px;
         }
         button.danger { background: #f44336; }
-        button.small { padding: 4px 8px; font-size: 12px; }
-        input {
+        button.warning { background: #ff9800; }
+        button.secondary { background: #607d8b; }
+        button.small { padding: 6px 10px; font-size: 12px; }
+        
+        input, select {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
             margin-bottom: 12px;
+            background: white;
         }
-        body.dark input { background: #3d3d3d; color: #eee; border-color: #555; }
+        
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            color: #666;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            margin: 0;
+        }
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+        }
+        body.dark .tab { color: #bbb; }
+        body.dark .tab.active { background: #4CAF50; color: white; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
         #login-box, #admin-content { display: none; }
         #login-box.active, #admin-content.active { display: block; }
+        
+        .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .search-box input { margin-bottom: 0; }
+        .search-box button { width: auto; margin-bottom: 0; }
+        
+        .badge {
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .badge.danger { background: #f44336; }
+        
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        body.dark .modal-content { background: #2d2d2d; }
     </style>
 </head>
 <body>
 <div id="login-box" class="active card">
-    <h2>👑 Админ-панель</h2>
-    <input type="password" id="admin-password" placeholder="Пароль" autocomplete="off">
+    <h1>👑 Админ-панель</h1>
+    <input type="password" id="admin-password" placeholder="Пароль администратора" autocomplete="off">
     <button onclick="login()">Войти</button>
-    <p id="login-error" style="color: #f44336; margin-top: 8px;"></p>
+    <p id="login-error" style="color: #f44336; margin-top: 12px;"></p>
 </div>
 
 <div id="admin-content" class="card">
-    <h2>👑 Управление</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>👑 Управление чатом</h1>
+        <button class="secondary" onclick="logout()">Выйти</button>
+    </div>
+    
     <div class="stats" id="stats"></div>
     
-    <h3 style="margin: 20px 0 12px;">🏠 Комнаты</h3>
-    <div id="rooms-table"></div>
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('rooms')">🏠 Комнаты</button>
+        <button class="tab" onclick="switchTab('users')">👥 Пользователи</button>
+        <button class="tab" onclick="switchTab('messages')">💬 Сообщения</button>
+        <button class="tab" onclick="switchTab('tools')">🛠️ Инструменты</button>
+    </div>
     
-    <h3 style="margin: 20px 0 12px;">👥 Пользователи</h3>
-    <div id="users-table"></div>
+    <!-- Вкладка Комнаты -->
+    <div id="tab-rooms" class="tab-content active">
+        <div class="search-box">
+            <input type="text" id="room-search" placeholder="Поиск комнаты...">
+            <button onclick="searchRooms()">🔍</button>
+        </div>
+        <div id="rooms-table"></div>
+    </div>
     
-    <button onclick="logout()" style="margin-top: 20px; background: #607d8b;">Выйти</button>
+    <!-- Вкладка Пользователи -->
+    <div id="tab-users" class="tab-content">
+        <div class="search-box">
+            <input type="text" id="user-search" placeholder="Поиск пользователя...">
+            <button onclick="searchUsers()">🔍</button>
+        </div>
+        <div id="users-table"></div>
+    </div>
+    
+    <!-- Вкладка Сообщения -->
+    <div id="tab-messages" class="tab-content">
+        <div class="search-box">
+            <input type="text" id="msg-search" placeholder="Поиск по тексту сообщений...">
+            <button onclick="searchMessages()">🔍</button>
+        </div>
+        <select id="msg-room-filter">
+            <option value="">Все комнаты</option>
+        </select>
+        <div id="messages-result"></div>
+    </div>
+    
+    <!-- Вкладка Инструменты -->
+    <div id="tab-tools" class="tab-content">
+        <h3>🧹 Очистка</h3>
+        <button class="warning" onclick="cleanOldMessages()">Удалить сообщения старше 30 дней</button>
+        <button class="danger" onclick="cleanInactiveRooms()">Удалить пустые комнаты</button>
+        
+        <h3>📤 Экспорт</h3>
+        <button onclick="exportDatabase()">Скачать всю базу (JSON)</button>
+        
+        <h3>🌙 Оформление</h3>
+        <button onclick="toggleDarkTheme()">Переключить тему</button>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра сообщений комнаты -->
+<div id="modal" class="modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 id="modal-title">Сообщения</h3>
+        <div id="modal-body"></div>
+        <button onclick="closeModal()" style="margin-top: 16px;">Закрыть</button>
+    </div>
 </div>
 
 <script>
 let isAdmin = sessionStorage.getItem('admin') === 'true';
+let allRooms = [];
+let allUsers = [];
 
-if (isAdmin) {
-    showAdminPanel();
-}
+if (isAdmin) showAdminPanel();
 
 async function login() {
     const pass = document.getElementById('admin-password').value;
@@ -109,6 +243,7 @@ async function login() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({password: pass})
     });
+    
     if (resp.ok) {
         sessionStorage.setItem('admin', 'true');
         showAdminPanel();
@@ -120,9 +255,13 @@ async function login() {
 async function showAdminPanel() {
     document.getElementById('login-box').classList.remove('active');
     document.getElementById('admin-content').classList.add('active');
+    
     await loadStats();
     await loadRooms();
     await loadUsers();
+    await loadRoomFilter();
+    
+    setInterval(loadStats, 10000); // Обновление каждые 10 секунд
 }
 
 async function loadStats() {
@@ -137,11 +276,22 @@ async function loadStats() {
 
 async function loadRooms() {
     const resp = await fetch('/admin/rooms');
-    const rooms = await resp.json();
-    let html = '<table><tr><th>Комната</th><th>Создатель</th><th>Участников</th><th></th></tr>';
+    allRooms = await resp.json();
+    renderRooms(allRooms);
+}
+
+function renderRooms(rooms) {
+    let html = '<table><tr><th>Комната</th><th>Создатель</th><th>Участников</th><th>Действия</th></tr>';
     rooms.forEach(r => {
-        html += `<tr><td>${escapeHtml(r.room_id)}</td><td>${escapeHtml(r.creator)}</td><td>${r.participants}</td>
-            <td><button class="danger small" onclick="deleteRoomAdmin('${escapeHtml(r.room_id)}')">🗑️</button></td></tr>`;
+        html += `<tr>
+            <td>${escapeHtml(r.room_id)}</td>
+            <td>${escapeHtml(r.creator)}</td>
+            <td>${r.participants}</td>
+            <td>
+                <button class="small" onclick="viewRoomMessages('${escapeHtml(r.room_id)}')">📋</button>
+                <button class="danger small" onclick="deleteRoomAdmin('${escapeHtml(r.room_id)}')">🗑️</button>
+            </td>
+        </tr>`;
     });
     html += '</table>';
     document.getElementById('rooms-table').innerHTML = html || '<p>Нет комнат</p>';
@@ -149,13 +299,34 @@ async function loadRooms() {
 
 async function loadUsers() {
     const resp = await fetch('/admin/users');
-    const users = await resp.json();
-    let html = '<table><tr><th>Пользователь</th><th>Комнат</th><th>Активность</th></tr>';
+    allUsers = await resp.json();
+    renderUsers(allUsers);
+}
+
+function renderUsers(users) {
+    let html = '<table><tr><th>Пользователь</th><th>Комнат</th><th>Последняя активность</th><th>Действия</th></tr>';
     users.forEach(u => {
-        html += `<tr><td>${escapeHtml(u.username)}</td><td>${u.rooms}</td><td>${u.last_active ? new Date(u.last_active).toLocaleDateString() : '—'}</td></tr>`;
+        html += `<tr>
+            <td>${escapeHtml(u.username)}</td>
+            <td>${u.rooms}</td>
+            <td>${u.last_active ? new Date(u.last_active).toLocaleString() : '—'}</td>
+            <td>
+                <button class="small" onclick="viewUserRooms('${escapeHtml(u.username)}')">👁️</button>
+            </td>
+        </tr>`;
     });
     html += '</table>';
     document.getElementById('users-table').innerHTML = html || '<p>Нет пользователей</p>';
+}
+
+async function loadRoomFilter() {
+    const resp = await fetch('/admin/rooms');
+    const rooms = await resp.json();
+    const select = document.getElementById('msg-room-filter');
+    select.innerHTML = '<option value="">Все комнаты</option>';
+    rooms.forEach(r => {
+        select.innerHTML += `<option value="${escapeHtml(r.room_id)}">${escapeHtml(r.room_id)}</option>`;
+    });
 }
 
 async function deleteRoomAdmin(room) {
@@ -167,6 +338,117 @@ async function deleteRoomAdmin(room) {
     });
     loadStats();
     loadRooms();
+    loadRoomFilter();
+}
+
+async function viewRoomMessages(room) {
+    const resp = await fetch('/messages?room=' + encodeURIComponent(room));
+    const msgs = await resp.json();
+    
+    let html = `<h4>💬 ${escapeHtml(room)}</h4>`;
+    if (msgs.length === 0) {
+        html += '<p>Нет сообщений</p>';
+    } else {
+        msgs.slice(-50).forEach(m => {
+            html += `<p><b>${escapeHtml(m.username)}:</b> ${escapeHtml(m.text)}</p>`;
+        });
+    }
+    
+    document.getElementById('modal-title').textContent = `Сообщения: ${room}`;
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal').classList.add('active');
+}
+
+function viewUserRooms(username) {
+    const userRooms = allRooms.filter(r => {
+        // Упрощённо — показываем все комнаты, где пользователь мог быть
+        return true;
+    });
+    alert('Пользователь ' + username + ' в ' + allUsers.find(u => u.username === username)?.rooms + ' комнатах');
+}
+
+function searchRooms() {
+    const query = document.getElementById('room-search').value.toLowerCase();
+    const filtered = allRooms.filter(r => r.room_id.toLowerCase().includes(query));
+    renderRooms(filtered);
+}
+
+function searchUsers() {
+    const query = document.getElementById('user-search').value.toLowerCase();
+    const filtered = allUsers.filter(u => u.username.toLowerCase().includes(query));
+    renderUsers(filtered);
+}
+
+async function searchMessages() {
+    const query = document.getElementById('msg-search').value.toLowerCase();
+    const room = document.getElementById('msg-room-filter').value;
+    
+    // Упрощённый поиск — по всем комнатам
+    let allMessages = [];
+    for (const r of allRooms) {
+        if (room && r.room_id !== room) continue;
+        const resp = await fetch('/messages?room=' + encodeURIComponent(r.room_id));
+        const msgs = await resp.json();
+        msgs.forEach(m => { m.room = r.room_id; });
+        allMessages = allMessages.concat(msgs);
+    }
+    
+    const filtered = allMessages.filter(m => m.text.toLowerCase().includes(query));
+    
+    let html = `<h4>Найдено: ${filtered.length}</h4>`;
+    filtered.slice(0, 100).forEach(m => {
+        html += `<p><b>${escapeHtml(m.room)}</b> — ${escapeHtml(m.username)}: ${escapeHtml(m.text)}</p>`;
+    });
+    document.getElementById('messages-result').innerHTML = html;
+}
+
+async function cleanOldMessages() {
+    if (!confirm('Удалить все сообщения старше 30 дней?')) return;
+    // Будет реализовано в API
+    alert('Функция в разработке');
+}
+
+async function cleanInactiveRooms() {
+    if (!confirm('Удалить все комнаты без участников?')) return;
+    // Будет реализовано в API
+    alert('Функция в разработке');
+}
+
+async function exportDatabase() {
+    const data = {
+        rooms: allRooms,
+        users: allUsers,
+        exported: new Date().toISOString()
+    };
+    
+    // Собираем все сообщения
+    for (const r of allRooms) {
+        const resp = await fetch('/messages?room=' + encodeURIComponent(r.room_id));
+        data[r.room_id] = await resp.json();
+    }
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `chat_export_${Date.now()}.json`;
+    a.click();
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function closeModal(event) {
+    document.getElementById('modal').classList.remove('active');
+}
+
+function toggleDarkTheme() {
+    document.body.classList.toggle('dark');
+    localStorage.setItem('darkAdmin', document.body.classList.contains('dark'));
 }
 
 function logout() {
@@ -175,9 +457,15 @@ function logout() {
 }
 
 function escapeHtml(t) {
+    if (!t) return '';
     const d = document.createElement('div');
     d.textContent = t;
     return d.innerHTML;
+}
+
+// Восстановление темы
+if (localStorage.getItem('darkAdmin') === 'true') {
+    document.body.classList.add('dark');
 }
 </script>
 </body>
