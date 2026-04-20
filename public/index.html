@@ -30,7 +30,6 @@
         .screen { display: none; flex-direction: column; height: 100%; padding: 8px; }
         .screen.active { display: flex; }
         
-        /* Компактные заголовки */
         h3 {
             font-size: 1.1rem;
             padding: 6px 0;
@@ -40,7 +39,6 @@
             flex-shrink: 0;
         }
         
-        /* Чат — занимает всё пространство */
         #chat {
             flex: 1;
             overflow-y: auto;
@@ -50,13 +48,11 @@
             margin-bottom: 4px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
         }
-        body.dark #chat { background: #1e1e1e; }
         
-        /* Компактные сообщения */
         .message {
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 12px;
             max-width: 85%;
             word-wrap: break-word;
@@ -65,13 +61,26 @@
         }
         .my-message { background: #dcf8c6; align-self: flex-end; }
         .other-message { background: white; align-self: flex-start; border: 1px solid #e0e0e0; }
-        .msg-header { display: flex; align-items: center; gap: 4px; margin-bottom: 1px; }
+        
+        .msg-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
         .avatar { font-size: 14px; }
         .username { font-weight: 600; font-size: 12px; opacity: 0.8; }
+        .msg-time { font-size: 10px; opacity: 0.5; margin-left: auto; }
         
-        /* Компактные поля ввода и кнопки */
+        .msg-content {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+        }
+        .msg-text { flex: 1; }
+        
         input, button, select {
-            padding: 8px 10px;
+            padding: 10px 12px;
             margin-top: 4px;
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -90,64 +99,91 @@
         .button-group { display: flex; gap: 4px; margin-top: 4px; }
         .button-group button { flex: 1; margin-top: 0; }
         
-        /* Список комнат */
         .room-item {
-            padding: 8px 10px;
+            padding: 10px;
             background: #f8f9fa;
             border-radius: 8px;
-            margin-bottom: 4px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 4px;
+            margin-bottom: 6px;
         }
         body.dark .room-item { background: #3d3d3d; }
-        .room-info { flex: 1; display: flex; align-items: center; gap: 6px; }
-        .room-name { font-weight: 500; }
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .room-name { font-weight: 500; flex: 1; }
         .unread-badge {
             background: #4CAF50;
             color: white;
             border-radius: 10px;
-            padding: 1px 6px;
+            padding: 2px 8px;
             font-size: 11px;
         }
         .room-actions {
-            width: 100%;
-            margin-top: 4px;
             display: flex;
-            gap: 4px;
-            justify-content: flex-end;
+            gap: 6px;
         }
         .room-actions button {
-            padding: 4px 8px;
-            font-size: 12px;
+            flex: 1;
+            padding: 8px;
+            font-size: 13px;
             margin: 0;
         }
         
-        /* Профиль */
         .profile-section {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 8px;
+            padding: 10px;
             background: #f8f9fa;
             border-radius: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
         body.dark .profile-section { background: #3d3d3d; }
-        #profile-avatar { font-size: 28px; }
+        #profile-avatar { font-size: 32px; }
         #profile-name { font-weight: 600; }
         
         .back-btn {
             background: transparent;
             color: #4CAF50;
             width: auto;
-            padding: 4px 8px;
+            padding: 6px 10px;
             margin-bottom: 4px;
         }
         .empty { text-align: center; color: #999; padding: 12px; }
         .header-actions { margin-left: auto; display: flex; gap: 4px; }
-        .header-actions button { padding: 4px 8px; margin: 0; }
+        .header-actions button { padding: 6px 10px; margin: 0; }
+        
+        .emoji-picker {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .emoji-btn {
+            width: auto;
+            padding: 6px 10px;
+            font-size: 18px;
+            background: transparent;
+            color: inherit;
+            border: 1px solid #ddd;
+            margin: 0;
+        }
+        body.dark .emoji-btn { border-color: #555; }
+        
+        .settings-group {
+            margin-top: 12px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        body.dark .settings-group { background: #3d3d3d; }
+        .settings-group label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -175,6 +211,21 @@
             <span class="header-actions"><span id="current-user-badge"></span></span>
         </h3>
         <div id="chat"></div>
+        
+        <!-- Эмодзи-пикер -->
+        <div class="emoji-picker" id="emoji-picker">
+            <button class="emoji-btn" onclick="addEmoji('😊')">😊</button>
+            <button class="emoji-btn" onclick="addEmoji('😂')">😂</button>
+            <button class="emoji-btn" onclick="addEmoji('❤️')">❤️</button>
+            <button class="emoji-btn" onclick="addEmoji('👍')">👍</button>
+            <button class="emoji-btn" onclick="addEmoji('😮')">😮</button>
+            <button class="emoji-btn" onclick="addEmoji('😢')">😢</button>
+            <button class="emoji-btn" onclick="addEmoji('😡')">😡</button>
+            <button class="emoji-btn" onclick="addEmoji('🎉')">🎉</button>
+            <button class="emoji-btn" onclick="addEmoji('🔥')">🔥</button>
+            <button class="emoji-btn" onclick="addEmoji('💯')">💯</button>
+        </div>
+        
         <input id="msg-input" type="text" placeholder="Сообщение..." maxlength="500">
         <div class="button-group">
             <button onclick="sendMessage()">📤</button>
@@ -188,19 +239,47 @@
     <div id="settings-screen" class="screen">
         <button class="back-btn" onclick="backToRoomsFromSettings()">← Назад</button>
         <h3>⚙️ Настройки</h3>
+        
         <div class="profile-section">
             <span id="settings-avatar">😎</span>
             <input id="settings-name" placeholder="Имя" maxlength="20">
         </div>
-        <select id="settings-avatar-select">
+        
+        <label>Выбери аватар:</label>
+        <select id="settings-avatar-select" style="margin-top:4px;">
             <option value="😎">😎 Крутой</option>
             <option value="🐶">🐶 Пёс</option>
             <option value="🦊">🦊 Лис</option>
             <option value="🐱">🐱 Кот</option>
+            <option value="🐼">🐼 Панда</option>
+            <option value="👽">👽 Пришелец</option>
+            <option value="🤖">🤖 Робот</option>
+            <option value="👻">👻 Призрак</option>
+            <option value="🐧">🐧 Пингвин</option>
+            <option value="🦁">🦁 Лев</option>
+            <option value="🐸">🐸 Лягушка</option>
+            <option value="🐵">🐵 Обезьяна</option>
+            <option value="🐔">🐔 Курица</option>
+            <option value="🐮">🐮 Корова</option>
+            <option value="🦄">🦄 Единорог</option>
+            <option value="🐲">🐲 Дракон</option>
+            <option value="🎃">🎃 Тыква</option>
+            <option value="🤡">🤡 Клоун</option>
+            <option value="💀">💀 Череп</option>
+            <option value="👑">👑 Корона</option>
         </select>
-        <label style="margin-top:8px;"><input type="checkbox" id="dark-theme-toggle"> 🌙 Тёмная тема</label>
+        
+        <div class="settings-group">
+            <label>
+                <input type="checkbox" id="dark-theme-toggle"> 🌙 Тёмная тема
+            </label>
+            <label style="margin-top:8px;">
+                <input type="checkbox" id="sound-toggle" checked> 🔊 Звук при сообщениях
+            </label>
+        </div>
+        
         <button onclick="saveSettings()" style="margin-top:12px;">💾 Сохранить</button>
-        <button class="danger" onclick="resetAll()">🚪 Выйти</button>
+        <button class="danger" onclick="resetAll()">🚪 Выйти из аккаунта</button>
     </div>
 </div>
 
@@ -212,6 +291,8 @@ let currentAvatar = localStorage.getItem("avatar") || "😎";
 let currentRoom = "";
 let isCreator = false;
 let rooms = [];
+let soundEnabled = localStorage.getItem("soundEnabled") !== "false";
+let lastMessageSound = new Audio('data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgYGBgYCAgICAf39/f39/f39/gICAf39/gICAf39/gICAf39/f39/f39/gICAf39/f39/f3+AgICAAAAA');
 
 function init() {
     if (!currentUser) {
@@ -222,12 +303,18 @@ function init() {
         document.body.classList.add("dark");
         document.getElementById("dark-theme-toggle").checked = true;
     }
+    document.getElementById("sound-toggle").checked = soundEnabled;
     updateProfile();
     loadRooms();
     setInterval(loadRooms, 3000);
     
     socket.on('new_message', (data) => {
-        if (data.room === currentRoom) addMessageToChat(data);
+        if (data.room === currentRoom) {
+            addMessageToChat(data);
+            if (soundEnabled && data.username !== currentUser) {
+                lastMessageSound.play().catch(()=>{});
+            }
+        }
         loadRooms();
     });
 }
@@ -259,10 +346,13 @@ async function loadRooms() {
         const cr = await fetch('/creator?room=' + room.name).then(r => r.json());
         const isCreatorRoom = cr.creator === currentUser;
         html += `<div class="room-item">
-            <div class="room-info"><span class="room-name">🏠 ${escapeHtml(room.name)}</span>${room.unread ? `<span class="unread-badge">${room.unread}</span>` : ''}</div>
+            <div class="room-info">
+                <span class="room-name">🏠 ${escapeHtml(room.name)}</span>
+                ${room.unread ? `<span class="unread-badge">${room.unread}</span>` : ''}
+            </div>
             <div class="room-actions">
                 <button onclick="enterRoom('${escapeHtml(room.name)}')">Войти</button>
-                <button class="danger" onclick="leaveRoom('${escapeHtml(room.name)}')">Покинуть</button>
+                <button class="danger" onclick="hideRoom('${escapeHtml(room.name)}')">Скрыть</button>
                 ${isCreatorRoom ? `<button class="danger" onclick="deleteRoom('${escapeHtml(room.name)}')">🗑️</button>` : ''}
             </div>
         </div>`;
@@ -287,7 +377,17 @@ function addMessageToChat(msg) {
     const chat = document.getElementById('chat');
     const div = document.createElement('div');
     div.className = 'message ' + (msg.username === currentUser ? 'my-message' : 'other-message');
-    div.innerHTML = `<div class="msg-header"><span class="avatar">${msg.username === currentUser ? currentAvatar : '😎'}</span><span class="username">${escapeHtml(msg.username)}</span></div><div>${escapeHtml(msg.text)}</div>`;
+    
+    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    
+    div.innerHTML = `
+        <div class="msg-header">
+            <span class="avatar">${msg.username === currentUser ? currentAvatar : '😎'}</span>
+            <span class="username">${escapeHtml(msg.username)}</span>
+            <span class="msg-time">${time}</span>
+        </div>
+        <div class="msg-text">${escapeHtml(msg.text)}</div>
+    `;
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
 }
@@ -297,7 +397,20 @@ async function loadMessages() {
     const data = await resp.json();
     const chat = document.getElementById('chat');
     chat.innerHTML = data.length ? '' : '<div class="empty">✨ Пусто</div>';
-    data.forEach(addMessageToChat);
+    data.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'message ' + (msg.username === currentUser ? 'my-message' : 'other-message');
+        div.innerHTML = `
+            <div class="msg-header">
+                <span class="avatar">${msg.username === currentUser ? currentAvatar : '😎'}</span>
+                <span class="username">${escapeHtml(msg.username)}</span>
+                <span class="msg-time">--:--</span>
+            </div>
+            <div class="msg-text">${escapeHtml(msg.text)}</div>
+        `;
+        chat.appendChild(div);
+    });
+    chat.scrollTop = chat.scrollHeight;
 }
 
 async function sendMessage() {
@@ -308,8 +421,14 @@ async function sendMessage() {
     input.value = '';
 }
 
-async function leaveRoom(room) {
-    if (!confirm('Покинуть ' + room + '?')) return;
+function addEmoji(emoji) {
+    const input = document.getElementById('msg-input');
+    input.value += emoji;
+    input.focus();
+}
+
+async function hideRoom(room) {
+    if (!confirm('Скрыть комнату ' + room + ' из списка?')) return;
     await fetch('/leave_room', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, room}) });
     if (currentRoom === room) backToRooms();
     loadRooms();
@@ -340,8 +459,20 @@ function downloadChat() {
     });
 }
 
-function leaveCurrentRoom() { if (currentRoom) leaveRoom(currentRoom); }
-function backToRooms() { socket.emit('leave_room', currentRoom); currentRoom = ''; showScreen('rooms'); loadRooms(); }
+function leaveCurrentRoom() {
+    if (currentRoom) {
+        socket.emit('leave_room', currentRoom);
+        backToRooms();
+    }
+}
+
+function backToRooms() {
+    socket.emit('leave_room', currentRoom);
+    currentRoom = '';
+    showScreen('rooms');
+    loadRooms();
+}
+
 function showCreateRoom() { const r = prompt('Название комнаты:'); if (r) enterRoom(r); }
 function showJoinRoom() { showCreateRoom(); }
 function showSettings() { updateProfile(); showScreen('settings'); }
@@ -352,9 +483,14 @@ function saveSettings() {
     if (name) { currentUser = name; localStorage.setItem('username', name); }
     currentAvatar = document.getElementById('settings-avatar-select').value;
     localStorage.setItem('avatar', currentAvatar);
+    
     const dark = document.getElementById('dark-theme-toggle').checked;
     localStorage.setItem('darkTheme', dark);
     document.body.classList.toggle('dark', dark);
+    
+    soundEnabled = document.getElementById('sound-toggle').checked;
+    localStorage.setItem('soundEnabled', soundEnabled);
+    
     updateProfile();
     showScreen('rooms');
     loadRooms();
