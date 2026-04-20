@@ -3,18 +3,15 @@ const http = require('http');
 const socketIo = require('socket.io');
 const Database = require('better-sqlite3');
 const path = require('path');
-const bcrypt = require('bcrypt');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 const db = new Database('chat.db');
 
-// Админ-пароль (из переменной Railway, по умолчанию 'admin123')
+// Админ-пароль (прямое сравнение, без хеширования)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const ADMIN_PASSWORD_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
 
-// Раздаём статику из папки public
 app.use(express.static('public'));
 app.use(express.json());
 
@@ -49,7 +46,8 @@ db.exec(`
   );
 `);
 
-console.log('✅ База данных готова');
+console.log('База данных готова');
+
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 function createRoomIfNotExists(room, creator) {
   const stmt = db.prepare('SELECT room_id FROM rooms WHERE room_id = ?');
@@ -86,13 +84,10 @@ function getUnreadCounts(username, rooms) {
 }
 
 // ========== API МАРШРУТЫ ==========
-
-// Главная страница
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Получить список комнат пользователя
 app.get('/my_rooms', (req, res) => {
   const username = req.query.username;
   if (!username) return res.json([]);
@@ -106,14 +101,12 @@ app.get('/my_rooms', (req, res) => {
   res.json(result);
 });
 
-// Создатель комнаты
 app.get('/creator', (req, res) => {
   const room = req.query.room;
   const row = db.prepare('SELECT creator FROM rooms WHERE room_id = ?').get(room);
   res.json({ creator: row ? row.creator : null });
 });
 
-// Отправить сообщение
 app.post('/send', (req, res) => {
   const { room, username, message } = req.body;
   if (!room || !username || !message) return res.status(400).json({ error: 'Нет данных' });
@@ -122,13 +115,10 @@ app.post('/send', (req, res) => {
   createRoomIfNotExists(room, username);
   db.prepare('INSERT INTO messages (room, username, text) VALUES (?, ?, ?)').run(room, username, msg);
   
-  // Отправляем через сокеты
   io.to(room).emit('new_message', { username, text: msg, room });
-  
   res.json({ status: 'ok' });
 });
 
-// Получить сообщения комнаты
 app.get('/messages', (req, res) => {
   const room = req.query.room;
   if (!room) return res.json([]);
@@ -139,7 +129,6 @@ app.get('/messages', (req, res) => {
   res.json(messages);
 });
 
-// Войти в комнату
 app.post('/join_room', (req, res) => {
   const { username, room } = req.body;
   if (!username || !room) return res.status(400).json({ error: 'Нет данных' });
@@ -147,7 +136,6 @@ app.post('/join_room', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Отметить как прочитанное
 app.post('/mark_read', (req, res) => {
   const { username, room } = req.body;
   if (!username || !room) return res.status(400).json({ error: 'Нет данных' });
@@ -155,14 +143,12 @@ app.post('/mark_read', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Покинуть комнату
 app.post('/leave_room', (req, res) => {
   const { username, room } = req.body;
   db.prepare('DELETE FROM user_rooms WHERE username = ? AND room = ?').run(username, room);
   res.json({ status: 'ok' });
 });
 
-// Очистить историю (только создатель)
 app.post('/clear', (req, res) => {
   const { room, username } = req.body;
   const creator = db.prepare('SELECT creator FROM rooms WHERE room_id = ?').get(room);
@@ -173,7 +159,6 @@ app.post('/clear', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Удалить комнату (создатель или админ)
 app.post('/delete_room', (req, res) => {
   const { room, username, isAdmin } = req.body;
   const creator = db.prepare('SELECT creator FROM rooms WHERE room_id = ?').get(room);
@@ -196,7 +181,7 @@ app.get('/admin', (req, res) => {
 
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
-  if (bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) {
+  if (password === ADMIN_PASSWORD) {
     res.json({ success: true });
   } else {
     res.status(401).json({ error: 'Неверный пароль' });
@@ -233,11 +218,10 @@ app.get('/admin/users', (req, res) => {
 
 // ========== SOCKET.IO ==========
 io.on('connection', (socket) => {
-  console.log('🔌 Пользователь подключился');
+  console.log('Пользователь подключился');
   
   socket.on('join_room', (room) => {
     socket.join(room);
-    console.log(`📌 Вошёл в комнату: ${room}`);
   });
   
   socket.on('leave_room', (room) => {
@@ -248,5 +232,5 @@ io.on('connection', (socket) => {
 // ========== ЗАПУСК ==========
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Сервер запущен на порту ${PORT}`);
+  console.log(`Сервер запущен на порту ${PORT}`);
 });
